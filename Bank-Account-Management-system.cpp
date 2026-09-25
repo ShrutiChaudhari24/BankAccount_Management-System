@@ -1,8 +1,33 @@
 # include <bits/stdc++.h>
 using namespace std;
 
+/*==================================================================
+ class to Handle Exception --> custom exception class
+==================================================================*/
+
+class BankException
+{
+    private:
+    string message;
+
+    public:
+    BankException(string message)
+    {
+        this->message = message;
+    }
+
+    string getMessage() const
+    {
+        return this->message;
+    }
+};
+
+/*==================================================================
+ class BankAccount
+==================================================================*/
+
 class BankAccount{
-    protected:
+    protected:   // protected data members and member functions are directly accessible in derived class
     int accountNo;
     string accountHolderName;
     string mobileNo;
@@ -19,7 +44,7 @@ class BankAccount{
     {   
         accountNo = acc_no;
 
-        /* double double account no mang raha hai kyoki humney main mae bhi likha hai
+        /* double sae account no. mang raha hai kyoki humney main mae bhi likha hai so fir sae yaha likhne ki jarurat nahi hai
         cout << "Enter Account Number : ";
         cin >> accountNo;
         */
@@ -50,20 +75,29 @@ class BankAccount{
     }
 
     virtual void deposit(double amount)
-    {
+    {   
+        if(amount <= 0)
+        {
+            throw BankException("Invalid deposit amount. ");
+        }
+
         balance = balance + amount;
 
     }
 
     virtual void withdraw(double amount)
     {
+        if(amount <= 0)
+        {
+            throw BankException("Invalid withdrawal amount. ");
+        }
         if(amount <= balance)
         {
             balance = balance - amount;
         }
         else
         {
-            cout << "Insufficient balance" << endl;
+            throw BankException("Insufficient balance. ") ;
         }
     }
 
@@ -79,20 +113,24 @@ class BankAccount{
 
 };
 
+/*==================================================================
+ class SavingAccount
+==================================================================*/
+
 class SavingsAccount : public BankAccount
 {
     private:
     double interestRate;
 
     public:
-    void acceptAccount(int acc_no)
+    void acceptAccount(int acc_no) override
     {
         BankAccount ::acceptAccount(acc_no);
         cout << "Intrest Rate : " ;
         cin >> interestRate;
     }
 
-    void displayAccount()
+    void displayAccount() override
     {
         BankAccount ::displayAccount();
         cout << "Intrest Rate " << interestRate << " % " << endl;
@@ -100,54 +138,49 @@ class SavingsAccount : public BankAccount
 
 };
 
+/*==================================================================
+ class CurrentAccount
+==================================================================*/
 class CurrentAccount : public BankAccount
 {
     private:
     double overdraftlimit;
 
     public:
-    void acceptAccount(int acc_no)
+    void acceptAccount(int acc_no) override
     {
         BankAccount::acceptAccount(acc_no);
         cout << "Enter OverDraft Limit : ";
         cin >> overdraftlimit;
     }
 
-    void displayAccount()
+    void displayAccount() override
     {
         BankAccount::displayAccount();
         cout << "OverDraft Limit : " << overdraftlimit << endl;
     }
 
-    void withdraw(double amount)
+    void withdraw(double amount) override
     {
+        if(amount <= 0)
+        {
+            throw BankException("Invalid withdrawal amount");
+        }
+
         if(amount <= balance + overdraftlimit)
         {
             balance = balance - amount;
         }
-        else{
-            cout << "Amount exceeds overdraft limit. " << endl;
+        else
+        {
+            throw BankException("Amount exceeds overdraft limit.");
         }
     }
 };
 
-class BankException
-{
-    private:
-    string message;
-
-    public:
-    BankException(string message)
-    {
-        this->message = message;
-    }
-
-    string getMessage()
-    {
-        return this->message;
-    }
-};
-
+/*==================================================================
+Global Function menuList --> menu driven code
+==================================================================*/
 int menuList()
 {
     int choice;
@@ -208,7 +241,7 @@ int main()
                 }    
                 if(exists)
                 {
-                    cout << "Account number already exists" << endl;
+                    throw BankException("Account number already exists.");
                     break; // ye case sae bhar nikalne kae liye hai
                 }
                 else{
@@ -227,7 +260,7 @@ int main()
                         accounts[count] = new CurrentAccount();
                     }
                     else{
-                        cout << "Invalid account type. " << endl;
+                        throw BankException("Invalid account type.");
                         break;
                     }
 
@@ -300,18 +333,11 @@ int main()
 
                         cout << "Enter Amount to deposit : ";
                         cin >> amount;
+                        
+                        accounts[i]->deposit(amount);
 
-                        if(amount <= 0)
-                        {
-                            cout << "Invalid deposit amount" << endl;
-                        }
-                        else
-                        {
-                            accounts[i]->deposit(amount);
-
-                            cout << "Amount deposited sucessfully" << endl;
-                            cout << "Updated Balance : " << accounts[i]->getBalance() << endl;
-                        }
+                        cout << "Amount deposited sucessfully" << endl;
+                        cout << "Updated Balance : " << accounts[i]->getBalance() << endl;
                         break;
                     }
                 }
@@ -341,16 +367,10 @@ int main()
 
                         cout << "Enter Amount to withdraw : ";
                         cin >> amount;
-
-                        if(amount <= 0)
-                        {
-                            cout << "Invalid withdraw amount" << endl;
-                        }
-                        else{
-                            accounts[i]->withdraw(amount);
-
-                            cout << "Current Balance: " << accounts[i]->getBalance() << endl;
-                        }
+                        
+                        accounts[i]->withdraw(amount);
+                        
+                        cout << "Current Balance: " << accounts[i]->getBalance() << endl;
                         break;  // ye break loop ko break karne kae liye hai
                     }
                 }
@@ -363,7 +383,7 @@ int main()
 
             case 6:
             {
-                /* 6.Display Account Type  --> yaha typeid ka use karna pedega*/
+                /* 6.Display Account Type  --> yaha typeid ka use karna pedega --> RTTI (Runtime type information)*/
                 int accNo;
                 bool found = false;
 
@@ -404,11 +424,17 @@ int main()
                 break;
             }
         }
-        catch(BankException e)
+        catch(const BankException& e)
         {
             cout << e.getMessage() << endl;
         }
         
+    }
+
+    // if we are allocating memory dynamically we have to free it manually it is good practice
+    for (int i = 0; i < count; i++)
+    {
+        delete accounts[i];
     }
     return 0;
 }
